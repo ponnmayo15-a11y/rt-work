@@ -96,6 +96,8 @@ def run() -> dict:
     elif cfg["sheet_settings"] not in client.get_sheet_titles(spreadsheet_id):
         client.add_sheet(spreadsheet_id, cfg["sheet_settings"])
         client.append_rows(spreadsheet_id, cfg["sheet_settings"], config_sheet.default_rows(cfg))
+    else:
+        config_sheet.sync_settings_sheet(client, spreadsheet_id, cfg["sheet_settings"], cfg)
 
     cfg.update(config_sheet.load_overrides(client, spreadsheet_id, cfg["sheet_settings"]))
     cfg["home_weekday_evening_start_time"] = dates.parse_time_str(cfg["home_weekday_evening_start"])

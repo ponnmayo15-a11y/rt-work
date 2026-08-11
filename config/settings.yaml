@@ -21,6 +21,13 @@ allowed_offline_prefectures:
 home_prefecture: "山梨県"
 home_weekday_evening_start: "18:00"
 
+# 採用対象をさらに絞り込む追加フィルタ(空リストなら制限なし)。スプレッドシートの「設定」タブから
+# 変更できる。ここで絞り込んでも、大きな学会(major_conference_keywords)は対象外にならない。
+category_filter: []
+duration_filter: []
+mode_filter: []
+weekday_filter: []
+
 # タイトルにこれらの語を含む講習会は、条件(オンライン/オフライン・費用・開催地・曜日)に関わらず
 # 必ずリストに入れる(技師会・技術学会の大きな学会)
 major_conference_keywords:
