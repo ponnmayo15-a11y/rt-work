@@ -63,12 +63,28 @@ python -m ct_credit_research.main
 
 ### 設定のカスタマイズ
 
-`config/settings.yaml` を編集するだけで挙動を調整できます。
+#### スプレッドシート上で変更する（コード不要）
 
-- `online_fee_max_yen`: オンライン講習の参加費上限（円）
-- `allowed_offline_prefectures` / `home_prefecture` / `home_weekday_evening_start`:
-  オフライン講習を許可する都道府県・平日夜も可とする地元県・その開始時刻
-- `major_conference_keywords`: 無条件で採用するタイトルキーワード
+スプレッドシートの「**設定**」タブのB列（値）を書き換えるだけで、次回実行から反映されます。
+GitHubやコードを触らずに調整したい、主要な5項目がここにあります。
+
+- オンライン参加費上限(円)
+- 対象都道府県(オフライン・カンマ区切り)
+- 地元県(平日夜も可)
+- 平日夜の開始時刻(HH:MM)
+- 大きな学会キーワード(カンマ区切り)
+
+A列のラベル文字列は固定です（`ct_credit_research/config_sheet.py` のマッピングと一致している必要があるため）。
+ラベル自体を書き換えたり行を並べ替えたりすると、その項目は認識されず `config/settings.yaml` の値のまま動きます。
+値を空欄にした場合も同様にYAML側の値が使われます。
+
+#### config/settings.yaml で変更する
+
+上記5項目以外（都道府県判定用のキーワード辞書、オンライン判定キーワード、無料判定キーワード、
+出典URLやシート名など、より技術的な設定）は `config/settings.yaml` を編集してコミットしてください。
+
+- `online_fee_max_yen` / `allowed_offline_prefectures` / `home_prefecture` / `home_weekday_evening_start` /
+  `major_conference_keywords`: スプレッドシートの「設定」タブが優先されます（未入力時のみこちらが使われます）
 - `prefecture_keywords`: 都道府県判定に使うキーワード（市区町村名など）
 - `online_keywords` / `free_keywords`: オンライン判定・無料判定に使うキーワード
 

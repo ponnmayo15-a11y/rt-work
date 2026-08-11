@@ -8,7 +8,7 @@ import os
 
 import yaml
 
-from . import dates, fetch_list, pdf_detail, sheets_client
+from . import config_sheet, dates, fetch_list, pdf_detail, sheets_client
 from . import state as state_mod
 from .classify import classify_entry
 
@@ -38,9 +38,7 @@ HEADER = [
 
 def load_config() -> dict:
     with open(CONFIG_PATH, encoding="utf-8") as f:
-        cfg = yaml.safe_load(f)
-    cfg["home_weekday_evening_start_time"] = dates.parse_time_str(cfg["home_weekday_evening_start"])
-    return cfg
+        return yaml.safe_load(f)
 
 
 def build_row(
@@ -76,6 +74,32 @@ def run() -> dict:
     st = state_mod.load_state(STATE_PATH)
     processed = set(st.get("processed_nos", []))
 
+    access_token = sheets_client.get_access_token()
+    client = sheets_client.SheetsClient(access_token)
+
+    spreadsheet_id = st.get("spreadsheet_id")
+    if not spreadsheet_id:
+        created = client.create_spreadsheet(
+            cfg["spreadsheet_title"],
+            [cfg["sheet_main"], cfg["sheet_manual"], cfg["sheet_log"], cfg["sheet_settings"]],
+        )
+        spreadsheet_id = created["spreadsheetId"]
+        client.append_rows(spreadsheet_id, cfg["sheet_main"], [HEADER])
+        client.append_rows(spreadsheet_id, cfg["sheet_manual"], [HEADER])
+        client.append_rows(
+            spreadsheet_id,
+            cfg["sheet_log"],
+            [["実行日時", "新規確認件数", "対象追加件数", "要確認追加件数", "最終処理No"]],
+        )
+        client.append_rows(spreadsheet_id, cfg["sheet_settings"], config_sheet.default_rows(cfg))
+        st["spreadsheet_id"] = spreadsheet_id
+    elif cfg["sheet_settings"] not in client.get_sheet_titles(spreadsheet_id):
+        client.add_sheet(spreadsheet_id, cfg["sheet_settings"])
+        client.append_rows(spreadsheet_id, cfg["sheet_settings"], config_sheet.default_rows(cfg))
+
+    cfg.update(config_sheet.load_overrides(client, spreadsheet_id, cfg["sheet_settings"]))
+    cfg["home_weekday_evening_start_time"] = dates.parse_time_str(cfg["home_weekday_evening_start"])
+
     entries = fetch_list.fetch_credit_list(cfg["credit_list_index_url"])
     today = datetime.date.today()
 
@@ -106,24 +130,6 @@ def run() -> dict:
             manual_rows.append(row)
 
         processed.add(entry.no)
-
-    access_token = sheets_client.get_access_token()
-    client = sheets_client.SheetsClient(access_token)
-
-    spreadsheet_id = st.get("spreadsheet_id")
-    if not spreadsheet_id:
-        created = client.create_spreadsheet(
-            cfg["spreadsheet_title"], [cfg["sheet_main"], cfg["sheet_manual"], cfg["sheet_log"]]
-        )
-        spreadsheet_id = created["spreadsheetId"]
-        client.append_rows(spreadsheet_id, cfg["sheet_main"], [HEADER])
-        client.append_rows(spreadsheet_id, cfg["sheet_manual"], [HEADER])
-        client.append_rows(
-            spreadsheet_id,
-            cfg["sheet_log"],
-            [["実行日時", "新規確認件数", "対象追加件数", "要確認追加件数", "最終処理No"]],
-        )
-        st["spreadsheet_id"] = spreadsheet_id
 
     client.append_rows(spreadsheet_id, cfg["sheet_main"], include_rows)
     client.append_rows(spreadsheet_id, cfg["sheet_manual"], manual_rows)

@@ -36,6 +36,21 @@ class SheetsClient:
         resp.raise_for_status()
         return resp.json()
 
+    def get_sheet_titles(self, spreadsheet_id: str) -> list[str]:
+        url = f"{SHEETS_API}/{spreadsheet_id}"
+        resp = self.session.get(url, params={"fields": "sheets.properties.title"}, timeout=30)
+        resp.raise_for_status()
+        return [s["properties"]["title"] for s in resp.json().get("sheets", [])]
+
+    def add_sheet(self, spreadsheet_id: str, title: str) -> None:
+        self.batch_update(spreadsheet_id, [{"addSheet": {"properties": {"title": title}}}])
+
+    def get_values(self, spreadsheet_id: str, range_: str) -> list[list]:
+        url = f"{SHEETS_API}/{spreadsheet_id}/values/{range_}"
+        resp = self.session.get(url, timeout=30)
+        resp.raise_for_status()
+        return resp.json().get("values", [])
+
     def append_rows(self, spreadsheet_id: str, sheet_name: str, rows: list[list]) -> None:
         if not rows:
             return
