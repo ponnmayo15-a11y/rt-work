@@ -35,7 +35,6 @@ HEADER = [
     "このシートに追加した日",
     "ポイント数",
     "参加チェック",
-    "カレンダー同期済み",
 ]
 
 
@@ -69,7 +68,6 @@ def build_row(
         source_url,
         today.isoformat(),
         points.lookup(entry.category, entry.duration) or "",
-        False,
         False,
     ]
 
