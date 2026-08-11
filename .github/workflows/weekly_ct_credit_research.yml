@@ -2,8 +2,8 @@ name: CT認定技師 単位講習会 週次リサーチ
 
 on:
   schedule:
-    # 毎週月曜 8:00 JST (= 前日日曜 23:00 UTC)
-    - cron: "0 23 * * 0"
+    # 毎週月曜 7:30 JST (= 前日日曜 22:30 UTC)
+    - cron: "30 22 * * 0"
   workflow_dispatch: {}
 
 permissions:
