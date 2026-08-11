@@ -36,7 +36,7 @@ https://docs.google.com/spreadsheets/d/1lDodnyDqkZkGyNy8l2OUpxeg1r0muHpdSCme2hia
 
 ### 自動実行（週次）
 
-`.github/workflows/weekly_ct_credit_research.yml` により、毎週月曜8:00 JSTに自動実行されます。
+`.github/workflows/weekly_ct_credit_research.yml` により、毎週月曜7:30 JSTに自動実行されます。
 GitHub Actionsの `Actions` タブから手動実行（workflow_dispatch）も可能です。
 
 **重要**: GitHub Actionsのスケジュール実行はデフォルトブランチ（`main`）にあるワークフローだけが
