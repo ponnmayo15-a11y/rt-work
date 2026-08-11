@@ -6,6 +6,10 @@
 #  このURLには常に直近の新着分だけが載り続ける)
 credit_list_index_url: "https://www.ct-ninteikikou.jp/nintei/tani_nintei_list/"
 
+# 現在の認定期間の満了日(認定技師番号No.01743、2024年度更新対象より算出)。
+# 「参加履歴」タブの残り日数カウントダウンに使用する。5年ごとに更新後の日付へ書き換えること。
+renewal_period_end: "2030/03/31"
+
 # オンライン講習の参加費上限(円)。この金額以下なら形式・地域を問わず採用する。
 online_fee_max_yen: 1000
 
@@ -210,3 +214,4 @@ sheet_main: "対象講習会リスト"
 sheet_manual: "要確認"
 sheet_log: "実行ログ"
 sheet_settings: "設定"
+sheet_history: "参加履歴"

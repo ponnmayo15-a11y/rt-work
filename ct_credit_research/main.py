@@ -8,7 +8,7 @@ import os
 
 import yaml
 
-from . import config_sheet, dates, fetch_list, pdf_detail, sheets_client
+from . import config_sheet, dates, fetch_list, history_sheet, pdf_detail, points, sheets_client
 from . import state as state_mod
 from .classify import classify_entry
 
@@ -33,6 +33,9 @@ HEADER = [
     "詳細PDF",
     "一覧No.出典ページ",
     "このシートに追加した日",
+    "ポイント数",
+    "参加チェック",
+    "カレンダー同期済み",
 ]
 
 
@@ -65,6 +68,9 @@ def build_row(
         entry.pdf_url or "",
         source_url,
         today.isoformat(),
+        points.lookup(entry.category, entry.duration) or "",
+        False,
+        False,
     ]
 
 
@@ -92,12 +98,19 @@ def run() -> dict:
             [["実行日時", "新規確認件数", "対象追加件数", "要確認追加件数", "最終処理No"]],
         )
         client.append_rows(spreadsheet_id, cfg["sheet_settings"], config_sheet.default_rows(cfg))
+        client.add_sheet(spreadsheet_id, cfg["sheet_history"])
+        client.append_rows(spreadsheet_id, cfg["sheet_history"], history_sheet.default_rows(cfg))
         st["spreadsheet_id"] = spreadsheet_id
-    elif cfg["sheet_settings"] not in client.get_sheet_titles(spreadsheet_id):
-        client.add_sheet(spreadsheet_id, cfg["sheet_settings"])
-        client.append_rows(spreadsheet_id, cfg["sheet_settings"], config_sheet.default_rows(cfg))
     else:
-        config_sheet.sync_settings_sheet(client, spreadsheet_id, cfg["sheet_settings"], cfg)
+        existing_titles = client.get_sheet_titles(spreadsheet_id)
+        if cfg["sheet_settings"] not in existing_titles:
+            client.add_sheet(spreadsheet_id, cfg["sheet_settings"])
+            client.append_rows(spreadsheet_id, cfg["sheet_settings"], config_sheet.default_rows(cfg))
+        else:
+            config_sheet.sync_settings_sheet(client, spreadsheet_id, cfg["sheet_settings"], cfg)
+        if cfg["sheet_history"] not in existing_titles:
+            client.add_sheet(spreadsheet_id, cfg["sheet_history"])
+            client.append_rows(spreadsheet_id, cfg["sheet_history"], history_sheet.default_rows(cfg))
 
     cfg.update(config_sheet.load_overrides(client, spreadsheet_id, cfg["sheet_settings"]))
     cfg["home_weekday_evening_start_time"] = dates.parse_time_str(cfg["home_weekday_evening_start"])
