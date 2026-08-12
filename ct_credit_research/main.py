@@ -24,6 +24,7 @@ HEADER = [
     "開始時刻",
     "終了時刻",
     "単位種別",
+    "ポイント数",
     "所要区分",
     "開催形式",
     "都道府県",
@@ -33,7 +34,6 @@ HEADER = [
     "詳細PDF",
     "一覧No.出典ページ",
     "このシートに追加した日",
-    "ポイント数",
     "参加チェック",
 ]
 
@@ -58,6 +58,7 @@ def build_row(
         schedule.start_time.strftime("%H:%M") if schedule.start_time else "",
         schedule.end_time.strftime("%H:%M") if schedule.end_time else "",
         entry.category,
+        points.lookup(entry.category, entry.duration) or "",
         entry.duration,
         result.mode or "",
         result.prefecture or "",
@@ -67,7 +68,6 @@ def build_row(
         entry.pdf_url or "",
         source_url,
         today.isoformat(),
-        points.lookup(entry.category, entry.duration) or "",
         False,
     ]
 
@@ -109,13 +109,13 @@ def reapply_online_fee_limit(
 ) -> int:
     """設定タブの参加費上限を後から下げた場合に、既に載っている回のうち
     (大きな学会を除く)オンライン開催で新しい上限を超えるものを取り除く"""
-    rows = client.get_values(spreadsheet_id, f"'{sheet_name}'!A2:M1000")
+    rows = client.get_values(spreadsheet_id, f"'{sheet_name}'!A2:N1000")
     row_indexes_to_delete = []
     for offset, row in enumerate(rows):
         if not row or not row[0]:
             continue
-        row = row + [""] * (13 - len(row))
-        mode, fee_str, reason = row[8], row[10], row[12]
+        row = row + [""] * (14 - len(row))
+        mode, fee_str, reason = row[9], row[11], row[13]
         if mode != "online" or "大きな学会" in reason:
             continue
         try:
