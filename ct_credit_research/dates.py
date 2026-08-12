@@ -7,6 +7,7 @@ import requests
 
 _DATE_RE = re.compile(r"(\d{4})年(\d{1,2})月(\d{1,2})日")
 _DATE_SLASH_RE = re.compile(r"(\d{4})/(\d{1,2})/(\d{1,2})")
+_DATE_RANGE_RE = re.compile(r"(\d{4})年(\d{1,2})月\d{1,2}[〜～\-~](\d{1,2})日")
 _TIME_RE = re.compile(r"(AM|PM)(\d{1,2}):(\d{2})")
 _WEEKDAY_JP = ["月", "火", "水", "木", "金", "土", "日"]
 
@@ -54,6 +55,27 @@ def parse_schedule(date_text: str) -> ParsedSchedule:
     start_time = _to_24h(*times[0]) if len(times) >= 1 else None
     end_time = _to_24h(*times[1]) if len(times) >= 2 else None
     return ParsedSchedule(date=date_, start_time=start_time, end_time=end_time, weekday_jp=weekday_jp)
+
+
+def parse_display_date(date_text: str) -> datetime.date | None:
+    """スプレッドシートの「開催日」列(ISO形式の日付、または元のテキスト)から
+    「この講習会がいつ終わるか」の目安になる日付を1つ取り出す(既に終了した回の
+    掃除に使う)。複数日開催("2026年4月16〜19日")は最終日を返す。"""
+    text = date_text.strip()
+    try:
+        return datetime.date.fromisoformat(text)
+    except ValueError:
+        pass
+    normalized = text.replace("　", " ")
+    for pattern in (_DATE_RANGE_RE, _DATE_RE, _DATE_SLASH_RE):
+        match = pattern.search(normalized)
+        if match:
+            year, month, day = (int(v) for v in match.groups())
+            try:
+                return datetime.date(year, month, day)
+            except ValueError:
+                continue
+    return None
 
 
 def _load_holidays() -> set[str]:

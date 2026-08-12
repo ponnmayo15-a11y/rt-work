@@ -72,6 +72,34 @@ def build_row(
     ]
 
 
+def remove_finished_entries(
+    client: sheets_client.SheetsClient,
+    spreadsheet_id: str,
+    sheet_name: str,
+    sheet_id: int,
+    today: datetime.date,
+) -> int:
+    """開催日が既に過ぎた回をシートから削除する(今から申し込んでも参加できないため)"""
+    rows = client.get_values(spreadsheet_id, f"'{sheet_name}'!A2:C1000")
+    row_indexes_to_delete = []
+    for offset, row in enumerate(rows):
+        if len(row) < 3:
+            continue
+        event_date = dates.parse_display_date(row[2])
+        if event_date is not None and event_date < today:
+            row_indexes_to_delete.append(offset + 1)  # ヘッダー行(index0)の次から始まる
+
+    if not row_indexes_to_delete:
+        return 0
+
+    requests_body = [
+        {"deleteDimension": {"range": {"sheetId": sheet_id, "dimension": "ROWS", "startIndex": i, "endIndex": i + 1}}}
+        for i in sorted(row_indexes_to_delete, reverse=True)
+    ]
+    client.batch_update(spreadsheet_id, requests_body)
+    return len(row_indexes_to_delete)
+
+
 def run() -> dict:
     cfg = load_config()
 
@@ -146,6 +174,15 @@ def run() -> dict:
 
     client.append_rows(spreadsheet_id, cfg["sheet_main"], include_rows)
     client.append_rows(spreadsheet_id, cfg["sheet_manual"], manual_rows)
+
+    sheet_id_map = client.get_sheet_id_map(spreadsheet_id)
+    removed = remove_finished_entries(
+        client, spreadsheet_id, cfg["sheet_main"], sheet_id_map[cfg["sheet_main"]], today
+    )
+    removed += remove_finished_entries(
+        client, spreadsheet_id, cfg["sheet_manual"], sheet_id_map[cfg["sheet_manual"]], today
+    )
+
     client.append_rows(
         spreadsheet_id,
         cfg["sheet_log"],
@@ -166,6 +203,7 @@ def run() -> dict:
         "scanned": scanned,
         "included": len(include_rows),
         "manual_check": len(manual_rows),
+        "removed": removed,
         "spreadsheet_id": spreadsheet_id,
         "spreadsheet_url": f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/edit",
     }
@@ -176,6 +214,6 @@ if __name__ == "__main__":
     result = run()
     print(
         f"新規確認: {result['scanned']}件 / 対象追加: {result['included']}件 / "
-        f"要確認追加: {result['manual_check']}件"
+        f"要確認追加: {result['manual_check']}件 / 終了済み削除: {result['removed']}件"
     )
     print(f"スプレッドシート: {result['spreadsheet_url']}")

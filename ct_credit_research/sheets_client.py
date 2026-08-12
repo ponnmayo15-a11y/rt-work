@@ -42,6 +42,12 @@ class SheetsClient:
         resp.raise_for_status()
         return [s["properties"]["title"] for s in resp.json().get("sheets", [])]
 
+    def get_sheet_id_map(self, spreadsheet_id: str) -> dict[str, int]:
+        url = f"{SHEETS_API}/{spreadsheet_id}"
+        resp = self.session.get(url, params={"fields": "sheets.properties"}, timeout=30)
+        resp.raise_for_status()
+        return {s["properties"]["title"]: s["properties"]["sheetId"] for s in resp.json().get("sheets", [])}
+
     def add_sheet(self, spreadsheet_id: str, title: str) -> None:
         self.batch_update(spreadsheet_id, [{"addSheet": {"properties": {"title": title}}}])
 
