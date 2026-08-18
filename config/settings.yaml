@@ -207,11 +207,3 @@ online_keywords:
 # 「無料」判定に使うキーワード
 free_keywords:
   - "無料"
-
-# 出力先スプレッドシートの設定
-spreadsheet_title: "CT認定技師 単位認定講習会リサーチ"
-sheet_main: "対象講習会リスト"
-sheet_manual: "要確認"
-sheet_log: "実行ログ"
-sheet_settings: "設定"
-sheet_history: "参加履歴"

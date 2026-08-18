@@ -1,41 +1,20 @@
 """週次リサーチのオーケストレーション
 
 日本X線CT専門技師認定機構「単位認定講習会等一覧」の新着分を確認し、
-設定した条件に合う講習会をGoogleスプレッドシートに追記する。
+設定した条件に合う講習会をSQLite(data/ct_credit.db)に追記する。
 """
 import datetime
 import os
 
 import yaml
 
-from . import config_sheet, dates, fetch_list, history_sheet, pdf_detail, points, sheets_client
-from . import state as state_mod
+from . import db, dates, export_json, fetch_list, pdf_detail, points, settings_store
 from .classify import classify_entry
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_PATH = os.path.join(BASE_DIR, "config", "settings.yaml")
-STATE_PATH = os.path.join(BASE_DIR, "data", "state.json")
-
-HEADER = [
-    "認定No",
-    "講習会名",
-    "開催日",
-    "曜日",
-    "開始時刻",
-    "終了時刻",
-    "単位種別",
-    "ポイント数",
-    "所要区分",
-    "開催形式",
-    "都道府県",
-    "参加費(判定に使用した額)",
-    "検出した参加費",
-    "判定理由",
-    "詳細PDF",
-    "一覧No.出典ページ",
-    "このシートに追加した日",
-    "参加チェック",
-]
+DB_PATH = os.path.join(BASE_DIR, "data", "ct_credit.db")
+EXPORT_PATH = os.path.join(BASE_DIR, "docs", "data.json")
 
 
 def load_config() -> dict:
@@ -43,232 +22,98 @@ def load_config() -> dict:
         return yaml.safe_load(f)
 
 
-def build_row(
+def build_course_row(
     entry: fetch_list.CreditListEntry,
     schedule: dates.ParsedSchedule,
     result,
     source_url: str,
     today: datetime.date,
-) -> list:
-    return [
-        entry.no,
-        entry.title,
-        schedule.date.isoformat() if schedule.date else entry.date_text,
-        schedule.weekday_jp or "",
-        schedule.start_time.strftime("%H:%M") if schedule.start_time else "",
-        schedule.end_time.strftime("%H:%M") if schedule.end_time else "",
-        entry.category,
-        points.lookup(entry.category, entry.duration) or "",
-        entry.duration,
-        result.mode or "",
-        result.prefecture or "",
-        result.fee if result.fee is not None else "",
-        result.fee_display,
-        result.reason,
-        entry.pdf_url or "",
-        source_url,
-        today.isoformat(),
-        False,
-    ]
-
-
-def remove_finished_entries(
-    client: sheets_client.SheetsClient,
-    spreadsheet_id: str,
-    sheet_name: str,
-    sheet_id: int,
-    today: datetime.date,
-) -> int:
-    """開催日が既に過ぎた回をシートから削除する(今から申し込んでも参加できないため)"""
-    rows = client.get_values(spreadsheet_id, f"'{sheet_name}'!A2:C1000")
-    row_indexes_to_delete = []
-    for offset, row in enumerate(rows):
-        if len(row) < 3:
-            continue
-        event_date = dates.parse_display_date(row[2])
-        if event_date is not None and event_date < today:
-            row_indexes_to_delete.append(offset + 1)  # ヘッダー行(index0)の次から始まる
-
-    if not row_indexes_to_delete:
-        return 0
-
-    requests_body = [
-        {"deleteDimension": {"range": {"sheetId": sheet_id, "dimension": "ROWS", "startIndex": i, "endIndex": i + 1}}}
-        for i in sorted(row_indexes_to_delete, reverse=True)
-    ]
-    client.batch_update(spreadsheet_id, requests_body)
-    return len(row_indexes_to_delete)
-
-
-def reapply_online_fee_limit(
-    client: sheets_client.SheetsClient,
-    spreadsheet_id: str,
-    sheet_name: str,
-    sheet_id: int,
-    fee_limit: int,
-) -> int:
-    """設定タブの参加費上限を後から下げた場合に、既に載っている回のうち
-    (大きな学会を除く)オンライン開催で新しい上限を超えるものを取り除く"""
-    rows = client.get_values(spreadsheet_id, f"'{sheet_name}'!A2:N1000")
-    row_indexes_to_delete = []
-    for offset, row in enumerate(rows):
-        if not row or not row[0]:
-            continue
-        row = row + [""] * (14 - len(row))
-        mode, fee_str, reason = row[9], row[11], row[13]
-        if mode != "online" or "大きな学会" in reason:
-            continue
-        try:
-            fee = int(fee_str) if fee_str != "" else None
-        except ValueError:
-            fee = None
-        if fee is not None and fee > fee_limit:
-            row_indexes_to_delete.append(offset + 1)
-
-    if not row_indexes_to_delete:
-        return 0
-
-    requests_body = [
-        {"deleteDimension": {"range": {"sheetId": sheet_id, "dimension": "ROWS", "startIndex": i, "endIndex": i + 1}}}
-        for i in sorted(row_indexes_to_delete, reverse=True)
-    ]
-    client.batch_update(spreadsheet_id, requests_body)
-    return len(row_indexes_to_delete)
-
-
-def sort_by_date(client: sheets_client.SheetsClient, spreadsheet_id: str, sheet_name: str) -> None:
-    """開催日が近い順に並び替える(複数日開催の範囲表記は最終日を基準にする。
-    remove_finished_entriesと同じdates.parse_display_dateを使うため)"""
-    width = len(HEADER)
-    rows = client.get_values(spreadsheet_id, f"'{sheet_name}'!A2:R1000")
-    data = [row + [""] * (width - len(row)) for row in rows if row and row[0]]
-    if not data:
-        return
-
-    def sort_key(row: list) -> datetime.date:
-        return dates.parse_display_date(row[2]) or datetime.date(9999, 1, 1)
-
-    data.sort(key=sort_key)
-    range_ = f"'{sheet_name}'!A2:R{1 + len(data)}"
-    url = f"{sheets_client.SHEETS_API}/{spreadsheet_id}/values/{range_}"
-    resp = client.session.put(
-        url, params={"valueInputOption": "USER_ENTERED"}, json={"values": data}, timeout=30
-    )
-    resp.raise_for_status()
+    list_type: str,
+) -> dict:
+    return {
+        "no": entry.no,
+        "title": entry.title,
+        "event_date": schedule.date.isoformat() if schedule.date else entry.date_text,
+        "weekday": schedule.weekday_jp or "",
+        "start_time": schedule.start_time.strftime("%H:%M") if schedule.start_time else "",
+        "end_time": schedule.end_time.strftime("%H:%M") if schedule.end_time else "",
+        "category": entry.category,
+        "points": points.lookup(entry.category, entry.duration),
+        "duration": entry.duration,
+        "mode": result.mode or "",
+        "prefecture": result.prefecture or "",
+        "fee": result.fee,
+        "fee_display": result.fee_display,
+        "reason": result.reason,
+        "pdf_url": entry.pdf_url or "",
+        "source_url": source_url,
+        "added_date": today.isoformat(),
+        "list_type": list_type,
+    }
 
 
 def run() -> dict:
     cfg = load_config()
 
-    st = state_mod.load_state(STATE_PATH)
-    processed = set(st.get("processed_nos", []))
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    db.init_db(DB_PATH)
 
-    access_token = sheets_client.get_access_token()
-    client = sheets_client.SheetsClient(access_token)
+    with db.connect(DB_PATH) as conn:
+        db.ensure_default_settings(conn, cfg, settings_store.OVERRIDABLE_KEYS)
+        cfg.update(db.get_settings(conn))
+        cfg["home_weekday_evening_start_time"] = dates.parse_time_str(cfg["home_weekday_evening_start"])
 
-    spreadsheet_id = st.get("spreadsheet_id")
-    if not spreadsheet_id:
-        created = client.create_spreadsheet(
-            cfg["spreadsheet_title"],
-            [cfg["sheet_main"], cfg["sheet_manual"], cfg["sheet_log"], cfg["sheet_settings"]],
-        )
-        spreadsheet_id = created["spreadsheetId"]
-        client.append_rows(spreadsheet_id, cfg["sheet_main"], [HEADER])
-        client.append_rows(spreadsheet_id, cfg["sheet_manual"], [HEADER])
-        client.append_rows(
-            spreadsheet_id,
-            cfg["sheet_log"],
-            [["実行日時", "新規確認件数", "対象追加件数", "要確認追加件数", "最終処理No"]],
-        )
-        client.append_rows(spreadsheet_id, cfg["sheet_settings"], config_sheet.default_rows(cfg))
-        client.add_sheet(spreadsheet_id, cfg["sheet_history"])
-        client.append_rows(spreadsheet_id, cfg["sheet_history"], history_sheet.default_rows(cfg))
-        st["spreadsheet_id"] = spreadsheet_id
-    else:
-        existing_titles = client.get_sheet_titles(spreadsheet_id)
-        if cfg["sheet_settings"] not in existing_titles:
-            client.add_sheet(spreadsheet_id, cfg["sheet_settings"])
-            client.append_rows(spreadsheet_id, cfg["sheet_settings"], config_sheet.default_rows(cfg))
-        else:
-            config_sheet.sync_settings_sheet(client, spreadsheet_id, cfg["sheet_settings"], cfg)
-        if cfg["sheet_history"] not in existing_titles:
-            client.add_sheet(spreadsheet_id, cfg["sheet_history"])
-            client.append_rows(spreadsheet_id, cfg["sheet_history"], history_sheet.default_rows(cfg))
+        processed = db.get_processed_nos(conn)
+        entries = fetch_list.fetch_credit_list(cfg["credit_list_index_url"])
+        today = datetime.date.today()
 
-    cfg.update(config_sheet.load_overrides(client, spreadsheet_id, cfg["sheet_settings"]))
-    cfg["home_weekday_evening_start_time"] = dates.parse_time_str(cfg["home_weekday_evening_start"])
+        included = 0
+        manual_check = 0
+        new_max_no = db.get_last_processed_no(conn)
+        scanned = 0
 
-    entries = fetch_list.fetch_credit_list(cfg["credit_list_index_url"])
-    today = datetime.date.today()
+        for entry in entries:
+            new_max_no = max(new_max_no, entry.no)
+            if entry.no in processed:
+                continue
 
-    include_rows: list[list] = []
-    manual_rows: list[list] = []
-    new_max_no = st.get("last_processed_no", 0)
-    scanned = 0
+            schedule = dates.parse_schedule(entry.date_text)
+            if schedule.date is not None and schedule.date < today:
+                # 既に開催日が過ぎている回は、今から申し込んでも参加できないため対象外
+                db.mark_processed(conn, entry.no)
+                continue
 
-    for entry in entries:
-        new_max_no = max(new_max_no, entry.no)
-        if entry.no in processed:
-            continue
+            scanned += 1
+            pdf_text = pdf_detail.fetch_pdf_text(entry.pdf_url) if entry.pdf_url else None
+            result = classify_entry(entry, schedule, pdf_text, cfg)
 
-        schedule = dates.parse_schedule(entry.date_text)
-        if schedule.date is not None and schedule.date < today:
-            # 既に開催日が過ぎている回は、今から申し込んでも参加できないため対象外
-            processed.add(entry.no)
-            continue
+            if result.status == "include":
+                row = build_course_row(entry, schedule, result, cfg["credit_list_index_url"], today, "main")
+                db.insert_course(conn, row)
+                included += 1
+            elif result.status == "manual_check":
+                row = build_course_row(entry, schedule, result, cfg["credit_list_index_url"], today, "manual")
+                db.insert_course(conn, row)
+                manual_check += 1
 
-        scanned += 1
-        pdf_text = pdf_detail.fetch_pdf_text(entry.pdf_url) if entry.pdf_url else None
-        result = classify_entry(entry, schedule, pdf_text, cfg)
-        row = build_row(entry, schedule, result, cfg["credit_list_index_url"], today)
+            db.mark_processed(conn, entry.no)
 
-        if result.status == "include":
-            include_rows.append(row)
-        elif result.status == "manual_check":
-            manual_rows.append(row)
+        removed = db.delete_finished_courses(conn, today)
+        removed += db.reapply_online_fee_limit(conn, cfg["online_fee_max_yen"])
 
-        processed.add(entry.no)
+        db.set_last_processed_no(conn, new_max_no)
+        db.add_run_log(conn, scanned, included, manual_check, new_max_no)
 
-    client.append_rows(spreadsheet_id, cfg["sheet_main"], include_rows)
-    client.append_rows(spreadsheet_id, cfg["sheet_manual"], manual_rows)
-
-    sheet_id_map = client.get_sheet_id_map(spreadsheet_id)
-    removed = remove_finished_entries(
-        client, spreadsheet_id, cfg["sheet_main"], sheet_id_map[cfg["sheet_main"]], today
-    )
-    removed += remove_finished_entries(
-        client, spreadsheet_id, cfg["sheet_manual"], sheet_id_map[cfg["sheet_manual"]], today
-    )
-    removed += reapply_online_fee_limit(
-        client, spreadsheet_id, cfg["sheet_main"], sheet_id_map[cfg["sheet_main"]], cfg["online_fee_max_yen"]
-    )
-
-    sort_by_date(client, spreadsheet_id, cfg["sheet_main"])
-    sort_by_date(client, spreadsheet_id, cfg["sheet_manual"])
-
-    client.append_rows(
-        spreadsheet_id,
-        cfg["sheet_log"],
-        [[
-            datetime.datetime.now().isoformat(timespec="seconds"),
-            scanned,
-            len(include_rows),
-            len(manual_rows),
-            new_max_no,
-        ]],
-    )
-
-    st["last_processed_no"] = new_max_no
-    st["processed_nos"] = sorted(processed)
-    state_mod.save_state(STATE_PATH, st)
+        os.makedirs(os.path.dirname(EXPORT_PATH), exist_ok=True)
+        export_cfg = {k: v for k, v in cfg.items() if k != "home_weekday_evening_start_time"}
+        export_data = export_json.build_export(conn, export_cfg, today)
+        export_json.write_export(EXPORT_PATH, export_data)
 
     summary = {
         "scanned": scanned,
-        "included": len(include_rows),
-        "manual_check": len(manual_rows),
+        "included": included,
+        "manual_check": manual_check,
         "removed": removed,
-        "spreadsheet_id": spreadsheet_id,
-        "spreadsheet_url": f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/edit",
     }
     return summary
 
@@ -279,4 +124,5 @@ if __name__ == "__main__":
         f"新規確認: {result['scanned']}件 / 対象追加: {result['included']}件 / "
         f"要確認追加: {result['manual_check']}件 / 終了済み削除: {result['removed']}件"
     )
-    print(f"スプレッドシート: {result['spreadsheet_url']}")
+    print(f"データベース: {DB_PATH}")
+    print(f"公開用JSON: {EXPORT_PATH}")

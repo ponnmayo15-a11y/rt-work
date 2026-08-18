@@ -1,0 +1,78 @@
+name: CT認定技師 Webアプリ 書き込み処理(参加チェック/設定変更)
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  handle:
+    if: |
+      contains(github.event.issue.title, '[参加チェック]') || contains(github.event.issue.title, '[設定変更]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Handle issue
+        id: handle
+        continue-on-error: true
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+          CT_CALENDAR_ID: ${{ secrets.CT_CALENDAR_ID }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+        run: python scripts/handle_issue.py > result.txt 2> error.txt
+
+      - name: Commit updated data
+        if: steps.handle.outcome == 'success'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/ct_credit.db docs/data.json
+          git diff --cached --quiet || git commit -m "chore: Issue #${{ github.event.issue.number }} の内容を反映"
+          git push
+
+      - name: Comment and close on success
+        if: steps.handle.outcome == 'success'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const result = fs.readFileSync('result.txt', 'utf8').trim();
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `✅ ${result}`,
+            });
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              state: 'closed',
+            });
+
+      - name: Comment on failure
+        if: steps.handle.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const error = fs.existsSync('error.txt') ? fs.readFileSync('error.txt', 'utf8').trim() : '';
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `❌ 処理に失敗しました。内容を確認し、必要であれば手動で対応してください。\n\n\`\`\`\n${error}\n\`\`\``,
+            });

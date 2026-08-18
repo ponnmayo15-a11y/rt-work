@@ -29,10 +29,10 @@ jobs:
           GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
         run: python -m ct_credit_research.main
 
-      - name: Commit updated state
+      - name: Commit updated data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/state.json
-          git diff --cached --quiet || git commit -m "chore: update ct_credit_research state"
+          git add data/ct_credit.db docs/data.json
+          git diff --cached --quiet || git commit -m "chore: 週次リサーチ結果を反映"
           git push

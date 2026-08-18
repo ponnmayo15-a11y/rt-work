@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CT認定技師 単位講習会リサーチ</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="app-header">
+  <h1>CT認定技師 単位講習会リサーチ</h1>
+  <p class="updated-at" id="updated-at"></p>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="tab-btn active" data-tab="summary">概要</button>
+  <button class="tab-btn" data-tab="main">対象講習会リスト</button>
+  <button class="tab-btn" data-tab="manual">要確認</button>
+  <button class="tab-btn" data-tab="history">参加履歴</button>
+  <button class="tab-btn" data-tab="settings">設定</button>
+</nav>
+
+<main>
+  <section id="tab-summary" class="tab-panel active">
+    <div class="stat-grid" id="stat-grid"></div>
+    <p class="note">
+      各講習会の「参加した」ボタンを押すとGitHubの新規Issue作成画面が開きます。内容はそのままで投稿すると、
+      自動でカレンダー登録・参加履歴への記録・このページの更新が行われます(反映まで数分かかります)。
+    </p>
+  </section>
+
+  <section id="tab-main" class="tab-panel">
+    <p class="note">条件に合致した講習会です。開催日が近い順に並んでいます。</p>
+    <div id="main-list" class="course-list"></div>
+  </section>
+
+  <section id="tab-manual" class="tab-panel">
+    <p class="note">自動判定できず、人の目でのチェックが必要な講習会です。詳細PDFを確認してください。</p>
+    <div id="manual-list" class="course-list"></div>
+  </section>
+
+  <section id="tab-history" class="tab-panel">
+    <div id="history-list"></div>
+  </section>
+
+  <section id="tab-settings" class="tab-panel">
+    <p class="note">
+      値を変更して「設定変更をリクエスト」を押すとGitHubの新規Issue作成画面が開きます。そのまま投稿すると、
+      次回の週次リサーチから新しい条件が適用されます。
+    </p>
+    <form id="settings-form"></form>
+  </section>
+</main>
+
+<footer class="app-footer">
+  <p>データソース: <a href="https://www.ct-ninteikikou.jp/nintei/tani_nintei_list/" target="_blank" rel="noopener">日本X線CT専門技師認定機構「単位認定講習会等一覧」</a></p>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
