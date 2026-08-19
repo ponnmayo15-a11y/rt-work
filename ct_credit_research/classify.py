@@ -1,11 +1,14 @@
 """条件判定ロジック
 
 採用条件(優先順):
-1. タイトルが大きな学会・技師会キーワードに一致 -> 無条件で採用
+1. タイトルが大きな学会・技師会キーワードに一致 -> 無条件で採用(以下のフィルタも適用しない)
 2. オンライン開催 かつ 参加費が上限以下 -> 採用
 3. オフライン開催 かつ 対象都道府県 かつ (休日 または (地元県 かつ 平日18時以降開始)) -> 採用
 上記のいずれにも当たらない場合は、判定に必要な情報(PDF・開催地・参加費など)が
 欠けているものは「要確認」、それ以外(条件に合わないと判明したもの)は不採用とする。
+
+採用と判定された回(大きな学会を除く)には、さらに単位種別・所要区分・開催形式・曜日の
+絞り込みフィルタ(スプレッドシートの「設定」タブで設定)を適用する。
 """
 from dataclasses import dataclass
 
@@ -22,6 +25,7 @@ class ClassificationResult:
     prefecture: str | None = None
     fee: int | None = None
     fee_display: str = ""
+    major_conference: bool = False
 
 
 def classify_entry(
@@ -30,8 +34,46 @@ def classify_entry(
     pdf_text: str | None,
     config: dict,
 ) -> ClassificationResult:
+    result = _classify(entry, schedule, pdf_text, config)
+    if result.status == "include" and not result.major_conference:
+        blocked_by = _blocked_by_filters(entry, schedule, result, config)
+        if blocked_by:
+            return ClassificationResult(
+                "exclude",
+                f"{result.reason}(設定の{blocked_by}フィルタで対象外)",
+                result.mode,
+                result.prefecture,
+                result.fee,
+                result.fee_display,
+            )
+    return result
+
+
+def _blocked_by_filters(
+    entry: CreditListEntry, schedule: ParsedSchedule, result: ClassificationResult, config: dict
+) -> str | None:
+    checks = [
+        ("単位種別", config.get("category_filter"), entry.category),
+        ("所要区分", config.get("duration_filter"), entry.duration),
+        ("開催形式", config.get("mode_filter"), result.mode or ""),
+        ("曜日", config.get("weekday_filter"), schedule.weekday_jp or ""),
+    ]
+    for label, allowed, value in checks:
+        if allowed and value not in allowed:
+            return label
+    return None
+
+
+def _classify(
+    entry: CreditListEntry,
+    schedule: ParsedSchedule,
+    pdf_text: str | None,
+    config: dict,
+) -> ClassificationResult:
     if any(kw in entry.title for kw in config["major_conference_keywords"]):
-        return ClassificationResult("include", "技師会・技術学会の大きな学会のため無条件掲載")
+        return ClassificationResult(
+            "include", "技師会・技術学会の大きな学会のため無条件掲載", major_conference=True
+        )
 
     if pdf_text is None:
         if entry.pdf_url is None:

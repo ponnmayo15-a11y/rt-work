@@ -6,6 +6,10 @@
 #  このURLには常に直近の新着分だけが載り続ける)
 credit_list_index_url: "https://www.ct-ninteikikou.jp/nintei/tani_nintei_list/"
 
+# 現在の認定期間の満了日(認定技師番号No.01743、2024年度更新対象より算出)。
+# 「参加履歴」タブの残り日数カウントダウンに使用する。5年ごとに更新後の日付へ書き換えること。
+renewal_period_end: "2030/03/31"
+
 # オンライン講習の参加費上限(円)。この金額以下なら形式・地域を問わず採用する。
 online_fee_max_yen: 1000
 
@@ -20,6 +24,13 @@ allowed_offline_prefectures:
 # 平日夜でも可とする「地元」の都道府県(この県内のオフライン講習のみ平日18時以降開催もOK)
 home_prefecture: "山梨県"
 home_weekday_evening_start: "18:00"
+
+# 採用対象をさらに絞り込む追加フィルタ(空リストなら制限なし)。スプレッドシートの「設定」タブから
+# 変更できる。ここで絞り込んでも、大きな学会(major_conference_keywords)は対象外にならない。
+category_filter: []
+duration_filter: []
+mode_filter: []
+weekday_filter: []
 
 # タイトルにこれらの語を含む講習会は、条件(オンライン/オフライン・費用・開催地・曜日)に関わらず
 # 必ずリストに入れる(技師会・技術学会の大きな学会)
@@ -196,9 +207,3 @@ online_keywords:
 # 「無料」判定に使うキーワード
 free_keywords:
   - "無料"
-
-# 出力先スプレッドシートの設定
-spreadsheet_title: "CT認定技師 単位認定講習会リサーチ"
-sheet_main: "対象講習会リスト"
-sheet_manual: "要確認"
-sheet_log: "実行ログ"
