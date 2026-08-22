@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-22T00:26:31",
+  "generated_at": "2026-08-22T00:49:09",
   "main_list": [
     {
       "no": 3495,
@@ -21,7 +21,9 @@
       "added_date": "2026-08-11",
       "list_type": "main",
       "attended": 0,
-      "attended_at": null
+      "attended_at": null,
+      "planned": 0,
+      "planned_at": null
     },
     {
       "no": 3446,
@@ -43,7 +45,9 @@
       "added_date": "2026-08-11",
       "list_type": "main",
       "attended": 0,
-      "attended_at": null
+      "attended_at": null,
+      "planned": 0,
+      "planned_at": null
     },
     {
       "no": 3470,
@@ -65,7 +69,9 @@
       "added_date": "2026-08-11",
       "list_type": "main",
       "attended": 1,
-      "attended_at": "2026-08-11"
+      "attended_at": "2026-08-11",
+      "planned": 0,
+      "planned_at": null
     },
     {
       "no": 3485,
@@ -87,7 +93,9 @@
       "added_date": "2026-08-11",
       "list_type": "main",
       "attended": 0,
-      "attended_at": null
+      "attended_at": null,
+      "planned": 0,
+      "planned_at": null
     },
     {
       "no": 3491,
@@ -109,7 +117,9 @@
       "added_date": "2026-08-11",
       "list_type": "main",
       "attended": 0,
-      "attended_at": null
+      "attended_at": null,
+      "planned": 0,
+      "planned_at": null
     },
     {
       "no": 3488,
@@ -131,7 +141,9 @@
       "added_date": "2026-08-11",
       "list_type": "main",
       "attended": 0,
-      "attended_at": null
+      "attended_at": null,
+      "planned": 0,
+      "planned_at": null
     },
     {
       "no": 3375,
@@ -153,7 +165,9 @@
       "added_date": "2026-08-11",
       "list_type": "main",
       "attended": 0,
-      "attended_at": null
+      "attended_at": null,
+      "planned": 0,
+      "planned_at": null
     },
     {
       "no": 3376,
@@ -175,7 +189,9 @@
       "added_date": "2026-08-11",
       "list_type": "main",
       "attended": 0,
-      "attended_at": null
+      "attended_at": null,
+      "planned": 0,
+      "planned_at": null
     },
     {
       "no": 3503,
@@ -197,7 +213,9 @@
       "added_date": "2026-08-11",
       "list_type": "main",
       "attended": 0,
-      "attended_at": null
+      "attended_at": null,
+      "planned": 0,
+      "planned_at": null
     },
     {
       "no": 3502,
@@ -219,7 +237,9 @@
       "added_date": "2026-08-11",
       "list_type": "main",
       "attended": 0,
-      "attended_at": null
+      "attended_at": null,
+      "planned": 0,
+      "planned_at": null
     },
     {
       "no": 3504,
@@ -241,7 +261,9 @@
       "added_date": "2026-08-11",
       "list_type": "main",
       "attended": 0,
-      "attended_at": null
+      "attended_at": null,
+      "planned": 0,
+      "planned_at": null
     },
     {
       "no": 3377,
@@ -263,7 +285,9 @@
       "added_date": "2026-08-11",
       "list_type": "main",
       "attended": 0,
-      "attended_at": null
+      "attended_at": null,
+      "planned": 0,
+      "planned_at": null
     },
     {
       "no": 3483,
@@ -285,7 +309,9 @@
       "added_date": "2026-08-11",
       "list_type": "main",
       "attended": 0,
-      "attended_at": null
+      "attended_at": null,
+      "planned": 0,
+      "planned_at": null
     },
     {
       "no": 3484,
@@ -307,7 +333,9 @@
       "added_date": "2026-08-11",
       "list_type": "main",
       "attended": 0,
-      "attended_at": null
+      "attended_at": null,
+      "planned": 0,
+      "planned_at": null
     }
   ],
   "manual_list": [
@@ -331,7 +359,9 @@
       "added_date": "2026-08-11",
       "list_type": "manual",
       "attended": 0,
-      "attended_at": null
+      "attended_at": null,
+      "planned": 0,
+      "planned_at": null
     },
     {
       "no": 3493,
@@ -353,7 +383,9 @@
       "added_date": "2026-08-11",
       "list_type": "manual",
       "attended": 0,
-      "attended_at": null
+      "attended_at": null,
+      "planned": 0,
+      "planned_at": null
     },
     {
       "no": 3489,
@@ -375,7 +407,9 @@
       "added_date": "2026-08-11",
       "list_type": "manual",
       "attended": 0,
-      "attended_at": null
+      "attended_at": null,
+      "planned": 0,
+      "planned_at": null
     },
     {
       "no": 3487,
@@ -397,7 +431,9 @@
       "added_date": "2026-08-11",
       "list_type": "manual",
       "attended": 0,
-      "attended_at": null
+      "attended_at": null,
+      "planned": 0,
+      "planned_at": null
     },
     {
       "no": 3251,
@@ -419,9 +455,12 @@
       "added_date": "2026-08-11",
       "list_type": "manual",
       "attended": 0,
-      "attended_at": null
+      "attended_at": null,
+      "planned": 0,
+      "planned_at": null
     }
   ],
+  "planned_list": [],
   "settings": [
     {
       "key": "online_fee_max_yen",
@@ -527,6 +566,14 @@
     "credit_target_days_remaining": 952
   },
   "run_log": [
+    {
+      "id": 4,
+      "run_at": "2026-08-22T00:49:09",
+      "scanned": 0,
+      "included": 0,
+      "manual_check": 0,
+      "last_processed_no": 3504
+    },
     {
       "id": 3,
       "run_at": "2026-08-18T04:11:21",

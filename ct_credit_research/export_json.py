@@ -46,6 +46,7 @@ def build_export(conn: sqlite3.Connection, config: dict, today: datetime.date | 
         "generated_at": datetime.datetime.now().isoformat(timespec="seconds"),
         "main_list": db.list_courses(conn, "main"),
         "manual_list": db.list_courses(conn, "manual"),
+        "planned_list": db.list_planned(conn),
         "settings": settings_display,
         "history": {
             "records": history,

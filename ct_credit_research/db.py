@@ -29,7 +29,9 @@ CREATE TABLE IF NOT EXISTS courses (
     added_date TEXT,
     list_type TEXT NOT NULL CHECK (list_type IN ('main', 'manual')),
     attended INTEGER NOT NULL DEFAULT 0,
-    attended_at TEXT
+    attended_at TEXT,
+    planned INTEGER NOT NULL DEFAULT 0,
+    planned_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS settings (
@@ -90,9 +92,20 @@ def connect(db_path: str):
         conn.close()
 
 
+def _migrate_schema(conn: sqlite3.Connection) -> None:
+    """CREATE TABLE IF NOT EXISTSは既存テーブルに新しい列を追加しないため、
+    後から増えた列をここで個別に追加する(既存の本番データを壊さないため)"""
+    existing_columns = {row["name"] for row in conn.execute("PRAGMA table_info(courses)")}
+    if "planned" not in existing_columns:
+        conn.execute("ALTER TABLE courses ADD COLUMN planned INTEGER NOT NULL DEFAULT 0")
+    if "planned_at" not in existing_columns:
+        conn.execute("ALTER TABLE courses ADD COLUMN planned_at TEXT")
+
+
 def init_db(db_path: str) -> None:
     with connect(db_path) as conn:
         conn.executescript(SCHEMA)
+        _migrate_schema(conn)
 
 
 def get_processed_nos(conn: sqlite3.Connection) -> set[int]:
@@ -167,6 +180,16 @@ def list_courses(conn: sqlite3.Connection, list_type: str) -> list[dict]:
     return data
 
 
+def list_planned(conn: sqlite3.Connection) -> list[dict]:
+    """参加予定にした(かつまだ参加済みではない)講習会を開催日順で返す"""
+    from . import dates
+
+    rows = conn.execute("SELECT * FROM courses WHERE planned = 1 AND attended = 0").fetchall()
+    data = [dict(row) for row in rows]
+    data.sort(key=lambda r: dates.parse_display_date(r["event_date"] or "") or datetime.date(9999, 1, 1))
+    return data
+
+
 def get_settings(conn: sqlite3.Connection) -> dict:
     overrides = {}
     for row in conn.execute("SELECT key, value FROM settings"):
@@ -225,6 +248,17 @@ def set_attended(conn: sqlite3.Connection, course_no: int) -> dict | None:
         return None
     conn.execute(
         "UPDATE courses SET attended = 1, attended_at = ? WHERE no = ?",
+        (datetime.datetime.now().isoformat(timespec="seconds"), course_no),
+    )
+    return dict(row)
+
+
+def set_planned(conn: sqlite3.Connection, course_no: int) -> dict | None:
+    row = conn.execute("SELECT * FROM courses WHERE no = ?", (course_no,)).fetchone()
+    if row is None:
+        return None
+    conn.execute(
+        "UPDATE courses SET planned = 1, planned_at = ? WHERE no = ?",
         (datetime.datetime.now().isoformat(timespec="seconds"), course_no),
     )
     return dict(row)

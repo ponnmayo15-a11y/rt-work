@@ -33,6 +33,17 @@ function participationIssueUrl(course) {
   return newIssueUrl(`[参加チェック] ${course.no}: ${course.title}`, body);
 }
 
+function plannedIssueUrl(course) {
+  const body = [
+    `course_no: ${course.no}`,
+    "",
+    "--- 以下は自動生成された内容です。編集せずそのまま投稿してください ---",
+    `講習会名: ${course.title}`,
+    `開催日: ${course.event_date}`,
+  ].join("\n");
+  return newIssueUrl(`[参加予定] ${course.no}: ${course.title}`, body);
+}
+
 function settingsIssueUrl(changes) {
   const lines = ["--- 変更したい設定だけ残してそのまま投稿してください ---", ""];
   for (const [key, value] of Object.entries(changes)) {
@@ -41,7 +52,7 @@ function settingsIssueUrl(changes) {
   return newIssueUrl("[設定変更]", lines.join("\n"));
 }
 
-function courseCard(course) {
+function courseCard(course, variant = "browse") {
   const meta = [
     course.event_date,
     course.weekday ? `${course.weekday}曜` : null,
@@ -57,11 +68,20 @@ function courseCard(course) {
     course.fee_display ? el("span", { class: "badge" }, `参加費: ${course.fee_display}`) : null,
   ]);
 
+  let actionButton;
+  if (course.attended) {
+    actionButton = el("span", { class: "attended-tag" }, "✓ 参加済み");
+  } else if (variant === "planned") {
+    actionButton = el("a", { class: "btn primary", href: participationIssueUrl(course), target: "_blank", rel: "noopener" }, "参加した");
+  } else if (course.planned) {
+    actionButton = el("span", { class: "planned-tag" }, "予定としてマーク済み");
+  } else {
+    actionButton = el("a", { class: "btn primary", href: plannedIssueUrl(course), target: "_blank", rel: "noopener" }, "参加予定にする");
+  }
+
   const actions = el("div", { class: "course-actions" }, [
     course.pdf_url ? el("a", { class: "btn", href: course.pdf_url, target: "_blank", rel: "noopener" }, "詳細PDF") : null,
-    course.attended
-      ? el("span", { class: "attended-tag" }, "✓ 参加済み")
-      : el("a", { class: "btn primary", href: participationIssueUrl(course), target: "_blank", rel: "noopener" }, "参加した"),
+    actionButton,
   ]);
 
   return el("div", { class: `course-card${course.attended ? " attended" : ""}` }, [
@@ -72,14 +92,14 @@ function courseCard(course) {
   ]);
 }
 
-function renderCourseList(containerId, courses) {
+function renderCourseList(containerId, courses, variant = "browse") {
   const container = document.getElementById(containerId);
   container.innerHTML = "";
   if (!courses.length) {
     container.appendChild(el("div", { class: "empty-state" }, "該当する講習会はありません"));
     return;
   }
-  for (const course of courses) container.appendChild(courseCard(course));
+  for (const course of courses) container.appendChild(courseCard(course, variant));
 }
 
 function renderSummary(data) {
@@ -93,6 +113,7 @@ function renderSummary(data) {
     ["目安日までの残り日数", `${h.credit_target_days_remaining}日`, h.credit_target_days_remaining < 180 ? "danger" : h.credit_target_days_remaining < 365 ? "warn" : ""],
     ["対象講習会リスト", `${data.main_list.length}件`, ""],
     ["要確認", `${data.manual_list.length}件`, ""],
+    ["参加予定", `${data.planned_list.length}件`, ""],
   ];
   grid.innerHTML = "";
   for (const [label, value, tone] of cards) {
@@ -191,6 +212,7 @@ async function main() {
     renderSummary(data);
     renderCourseList("main-list", data.main_list);
     renderCourseList("manual-list", data.manual_list);
+    renderCourseList("planned-list", data.planned_list, "planned");
     renderHistory(data);
     renderSettings(data);
   } catch (err) {

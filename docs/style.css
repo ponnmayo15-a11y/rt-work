@@ -142,6 +142,11 @@ a.btn.primary, button.btn.primary {
   color: var(--success);
   font-weight: 600;
 }
+.planned-tag {
+  font-size: 0.82rem;
+  color: var(--warn);
+  font-weight: 600;
+}
 
 .history-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px; }
 

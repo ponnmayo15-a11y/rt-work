@@ -1,4 +1,4 @@
-name: CT認定技師 Webアプリ 書き込み処理(参加チェック/設定変更)
+name: CT認定技師 Webアプリ 書き込み処理(参加予定/参加チェック/設定変更)
 
 on:
   issues:
@@ -11,7 +11,7 @@ permissions:
 jobs:
   handle:
     if: |
-      contains(github.event.issue.title, '[参加チェック]') || contains(github.event.issue.title, '[設定変更]')
+      contains(github.event.issue.title, '[参加チェック]') || contains(github.event.issue.title, '[参加予定]') || contains(github.event.issue.title, '[設定変更]')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
