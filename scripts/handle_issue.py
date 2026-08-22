@@ -123,12 +123,20 @@ def handle_settings_change(body: str) -> str:
 
         cfg = main_mod.load_config()
         cfg.update(db.get_settings(conn))
+
+        removed = 0
+        if "online_fee_max_yen" in dict(changed):
+            removed = db.reapply_online_fee_limit(conn, cfg["online_fee_max_yen"])
+
         export_cfg = {k: v for k, v in cfg.items() if k != "home_weekday_evening_start_time"}
         export_data = export_json.build_export(conn, export_cfg)
         export_json.write_export(main_mod.EXPORT_PATH, export_data)
 
     labels = "、".join(settings_store.LABELS[k] for k, _ in changed)
-    return f"設定を更新しました: {labels}(次回の週次リサーチから適用されます)"
+    result = f"設定を更新しました: {labels}"
+    if removed:
+        result += f"(参加費上限の変更に伴い、対象外になった{removed}件を対象講習会リストから削除しました)"
+    return result
 
 
 def main() -> None:
