@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-18T04:11:21",
+  "generated_at": "2026-08-22T00:21:08",
   "main_list": [
     {
       "no": 3458,
@@ -515,7 +515,7 @@
       "key": "online_fee_max_yen",
       "label": "オンライン参加費上限(円)",
       "description": "この金額以下のオンライン講習を採用します",
-      "value": 500,
+      "value": 0,
       "is_list": false
     },
     {
@@ -610,9 +610,9 @@
     ],
     "total_points": 13,
     "renewal_period_end": "2030/03/31",
-    "renewal_days_remaining": 1321,
+    "renewal_days_remaining": 1317,
     "credit_target_date": "2029/03/31",
-    "credit_target_days_remaining": 956
+    "credit_target_days_remaining": 952
   },
   "run_log": [
     {
